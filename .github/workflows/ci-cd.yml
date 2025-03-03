@@ -13,12 +13,7 @@ jobs:
 
     - name: Build Docker Image
       run: |
-        sudo docker build -t flask-app:${{ github.sha }} .
-
-    - name: Push Docker Image to DockerHub (optional)
-      run: |
-        echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-        docker push flask-app:${{ github.sha }}
+        docker build -t my-flask-app .
 
     - name: Deploy to AWS EC2
       env:
@@ -27,4 +22,5 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y sshpass
-        sshpass -e ssh -o StrictHostKeyChecking=no -i ${{ secrets.SSH_PRIVATE_KEY }} ubuntu@${{ secrets.HOST }} "docker pull flask-app:${{ github.sha }} && docker run -d -p 80:80 flask-app:${{ github.sha }}"
+        ssh-keyscan ${{ secrets.HOST }} >> ~/.ssh/known_hosts
+        sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.HOST }} "docker pull my-flask-app && docker run -d -p 80:80 my-flask-app"
