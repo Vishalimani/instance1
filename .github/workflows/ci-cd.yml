@@ -1,0 +1,30 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]  # Adjust this if your default branch has a different name
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build Docker Image
+      run: |
+        sudo docker build -t flask-app:${{ github.sha }} .
+
+    - name: Push Docker Image to DockerHub (optional)
+      run: |
+        echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+        docker push flask-app:${{ github.sha }}
+
+    - name: Deploy to AWS EC2
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        HOST: ${{ secrets.HOST }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y sshpass
+        sshpass -e ssh -o StrictHostKeyChecking=no -i ${{ secrets.SSH_PRIVATE_KEY }} ubuntu@${{ secrets.HOST }} "docker pull flask-app:${{ github.sha }} && docker run -d -p 80:80 flask-app:${{ github.sha }}"
