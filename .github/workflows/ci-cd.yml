@@ -5,7 +5,7 @@ on:
     branches: [ master ]  # Ensure this matches the main branch name in your repo
 
 jobs:
-  build-and-deploy:
+  build-and-deploy: 
     runs-on: ubuntu-latest
 
     steps:
