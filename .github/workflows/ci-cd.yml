@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master ]  # Ensure this matches the main branch name in your repo
 
 jobs:
   build-and-deploy:
@@ -11,11 +11,14 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Log in to Docker Hub
+      run: |
+        echo ${{ secrets.DOCKER_PASSWORD }} | docker login --username ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
     - name: Build Docker Image
       run: |
-        docker build -t vishali1/flask-app:latest .
-        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login --username vishali1 --password-stdin
-        docker push vishali1/flask-app:latest
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/flask-app:latest .
+        docker push ${{ secrets.DOCKER_USERNAME }}/flask-app:latest
 
     - name: Deploy to AWS EC2
       env:
@@ -23,12 +26,12 @@ jobs:
         HOST: ${{ secrets.HOST }}
       run: |
         mkdir -p ~/.ssh
-        echo "${SSH_PRIVATE_KEY}" > ~/.ssh/id_rsa
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan ${{ secrets.HOST }} >> ~/.ssh/known_hosts
         ssh -o "StrictHostKeyChecking=no" ubuntu@${{ secrets.HOST }} <<EOF
-          docker pull vishali1/flask-app:latest
+          docker pull ${{ secrets.DOCKER_USERNAME }}/flask-app:latest
           docker stop flask-app || true
           docker rm flask-app || true
-          docker run -d --name flask-app -p 80:80 vishali1/flask-app:latest
+          docker run -d --name flask-app -p 80:80 ${{ secrets.DOCKER_USERNAME }}/flask-app:latest
         EOF
