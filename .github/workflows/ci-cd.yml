@@ -29,9 +29,12 @@ jobs:
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan ${{ secrets.HOST }} >> ~/.ssh/known_hosts
-        ssh -o "StrictHostKeyChecking=no" ubuntu@${{ secrets.HOST }} <<EOF
+        ssh -o "StrictHostKeyChecking=no" ubuntu@${{ secrets.HOST }} 'bash -s' << 'EOF'
+          set -e  # Stop execution on any error
           docker pull ${{ secrets.DOCKER_USERNAME }}/flask-app:latest
-          docker stop flask-app || true
-          docker rm flask-app || true
-          docker run -d --name flask-app -p 80:80 ${{ secrets.DOCKER_USERNAME }}/flask-app:latest
+          # Ensure no conflicts with existing container
+          docker stop flask-app-container || true
+          docker rm flask-app-container || true
+          # Start new container
+          docker run -d --name flask-app-container -p 80:80 ${{ secrets.DOCKER_USERNAME }}/flask-app:latest
         EOF
