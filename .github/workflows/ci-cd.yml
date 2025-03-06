@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]  # Adjust this if your default branch has a different name
+    branches: [ master ]
 
 jobs:
   build-and-deploy:
@@ -13,14 +13,22 @@ jobs:
 
     - name: Build Docker Image
       run: |
-        docker build -t my-flask-app .
+        docker build -t vishali1/flask-app:latest .
+        echo "${{ secrets.DOCKER_PASSWORD }}" | docker login --username vishali1 --password-stdin
+        docker push vishali1/flask-app:latest
 
     - name: Deploy to AWS EC2
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         HOST: ${{ secrets.HOST }}
       run: |
-        sudo apt-get update
-        sudo apt-get install -y sshpass
+        mkdir -p ~/.ssh
+        echo "${SSH_PRIVATE_KEY}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
         ssh-keyscan ${{ secrets.HOST }} >> ~/.ssh/known_hosts
-        sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.HOST }} "docker pull my-flask-app && docker run -d -p 80:80 my-flask-app"
+        ssh -o "StrictHostKeyChecking=no" ubuntu@${{ secrets.HOST }} <<EOF
+          docker pull vishali1/flask-app:latest
+          docker stop flask-app || true
+          docker rm flask-app || true
+          docker run -d --name flask-app -p 80:80 vishali1/flask-app:latest
+        EOF
